@@ -1,0 +1,16 @@
+# compiled output
+main
+*.o
+*.out
+a.out
+
+# build directories (for when CMake arrives)
+build/
+cmake-build-*/
+
+# macOS noise
+.DS_Store
+
+# editor/tooling caches
+.cache/
+.vscode/
