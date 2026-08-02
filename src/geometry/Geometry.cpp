@@ -7,9 +7,9 @@
 // 0 means that the points are collinear
 // -1 means that the orientation is clockwise/right
 // 1 means that the orientations is counter-clockwise/left
-int Orientation(std::pair<long long, long long> a, std::pair<long long, long long> b, std::pair<long long, long long> c)
+int Orientation(Point a, Point b, Point c)
 {
-    long long data = (b.first - a.first) * (c.second - b.second) - (c.first - b.first) * (b.second - a.second);
+    long long data = (b.x - a.x) * (c.y - b.y) - (c.x - b.x) * (b.y - a.y);
     if (data > 0)
         return 1;
     else if (data < 0)
@@ -19,15 +19,15 @@ int Orientation(std::pair<long long, long long> a, std::pair<long long, long lon
 }
 
 // This ConvexHull includes collinear points in the polygon structure
-bool ConvexHull(std::vector<std::pair<long long, long long>> points, std::vector<std::pair<long long, long long>> &convex_hull_points, std::vector<std::pair<long long, long long>> &interior_points, bool non_line_non_point, int needed_interior_points)
+bool ConvexHull(std::vector<Point> points, std::vector<Point> &convex_hull_points, std::vector<Point> &interior_points, bool non_line_non_point, int needed_interior_points)
 {
     // emptying the two reference vectors
     convex_hull_points.clear();
     interior_points.clear();
 
     // prepping for convex hull, by sorting the points
-    std::sort(points.begin(), points.end(), [](std::pair<long long, long long> a, std::pair<long long, long long> b)
-              { return (a.first < b.first) || (a.first == b.first && a.second < b.second); });
+    std::sort(points.begin(), points.end(), [](Point a, Point b)
+              { return (a.x < b.x) || (a.x == b.x && a.y < b.y); });
 
     // here, only the indexes of the points from the vector points will be retained
     std::vector<int> upper_hull, lower_hull;
@@ -184,39 +184,90 @@ bool is_in_Circumcircle(const Triangle &t, const Point &p)
     return false;
 }
 
-std::vector<Triangle> BowyerWatson(const std::vector<Point> &p)
+std::vector<Triangle> DelauneyTriangulation(std::vector<Point> p)
 {
     if (p.size() < 3)
         throw std::runtime_error("need at least three points to calculate BowyerWatson");
 
-    // Trying to create the super triangle
-    // I will look what is the smallest square that contains all the points
-    // And the super triangle will contain that square
-    long long lowest_x, highest_x, lowest_y, highest_y;
-    lowest_x = highest_x = p[0].x;
-    lowest_y = highest_y = p[0].y;
-    for (int i = 1; i < int(p.size()); i++)
+    std::vector<Triangle> triangulation;
+    std::vector<Point> convex_hull;
+    std::vector<Point> interior_points;
+
+    // Calculating the convex hull
+    if (ConvexHull(p, convex_hull, interior_points, 1, 0) == 0)
+        throw std::runtime_error("cant build a convex hull out of the points for the delauney triangulation");
+
+    // Creating a initial triangulation (it will be probably wrong)
+    for (int i = 2; i < int(convex_hull.size()); i++)
+        triangulation.push_back(Triangle(convex_hull[0], convex_hull[i - 1], convex_hull[i]));
+
+    bool finished_fixing_triangulation = false;
+    // Fixing triangulation
+    while (!finished_fixing_triangulation)
     {
-        lowest_x = std::min(lowest_x, p[i].x);
-        highest_x = std::max(highest_x, p[i].x);
-        lowest_y = std::min(lowest_y, p[i].y);
-        highest_y = std::max(highest_y, p[i].y);
+        finished_fixing_triangulation = true;
+        // Adding the edges
+        std::map<Edge, int> edges;
+        for (Triangle &t : triangulation)
+        {
+            edges[{t.Get_Point(1), t.Get_Point(2)}]++;
+            edges[{t.Get_Point(2), t.Get_Point(3)}]++;
+            edges[{t.Get_Point(3), t.Get_Point(1)}]++;
+        }
+
+        // Searching at possible delauney errors
+        // We use Lawson's flipping
+        // we check each quadrilateral if it's valid
+        for (auto e : edges)
+            if (e.second > 1)
+            {
+                // we now know the edge in common of 2 triangles
+                // searching those two triangles
+
+                std::vector<Point> third_points;
+                std::vector<int> triangles_to_eliminate_maybe;
+                int index = 0;
+                for (Triangle &t : triangulation)
+                {
+                    if (Edge({t.Get_Point(1), t.Get_Point(2)}) == e.first)
+                    {
+                        third_points.push_back(t.Get_Point(3));
+                        triangles_to_eliminate_maybe.push_back(index);
+                    }
+                    if (Edge({t.Get_Point(2), t.Get_Point(3)}) == e.first)
+                    {
+                        third_points.push_back(t.Get_Point(1));
+                        triangles_to_eliminate_maybe.push_back(index);
+                    }
+                    if (Edge({t.Get_Point(3), t.Get_Point(1)}) == e.first)
+                    {
+                        third_points.push_back(t.Get_Point(2));
+                        triangles_to_eliminate_maybe.push_back(index);
+                    }
+                    index ++;
+                }
+                if (third_points.size() != 2)
+                    throw std::runtime_error("something went wrong in the lawsons's flipping");
+
+                // now let's check the quadrilateral
+                if (is_in_Circumcircle(Triangle(third_points[0], e.first.a, e.first.b), third_points[1]))
+                {
+                    finished_fixing_triangulation = false;
+                    // this means that we need to flip the diagonal of the quadrilateral
+
+                    while (triangles_to_eliminate_maybe.size())
+                    {
+                        triangulation.erase(triangulation.begin() + triangles_to_eliminate_maybe.back());
+                        triangles_to_eliminate_maybe.pop_back();
+                    }
+                    triangulation.push_back(Triangle(third_points[0], third_points[1], e.first.a));
+                    triangulation.push_back(Triangle(third_points[0], third_points[1], e.first.b));
+                }
+            }
     }
 
-    // Creating the points of the super triangle
-
-    long long dx = highest_x - lowest_x, dy = highest_y - lowest_y;
-    Point a{lowest_x - 1, lowest_y - 1};
-    Point b{lowest_x - 1, highest_y + dx + 2};
-    Point c{highest_x + dy + 2, lowest_y - 1};
-
-    // Adding the super triangle
-
-    std::vector<Triangle> triangulation;
-    triangulation.push_back(Triangle(a, b, c));
-
     // Starting the incremental process
-    for (const Point &x : p)
+    for (const Point &x : interior_points)
     {
         // this will helps us know what is the polygon formed by the bad triangles
         std::map<Edge, int> bad_edges;
@@ -237,7 +288,7 @@ std::vector<Triangle> BowyerWatson(const std::vector<Point> &p)
                 // Marking this for elimination
                 triangles_to_eliminate.push_back(index);
             }
-            index ++;
+            index++;
         }
         // eliminating bad triangles
         while (triangles_to_eliminate.size())
@@ -252,29 +303,6 @@ std::vector<Triangle> BowyerWatson(const std::vector<Point> &p)
                 // creating the new triangle formed by this edge and the new point
                 triangulation.push_back(Triangle(e.first.a, e.first.b, x));
             }
-    }
-
-    // elimating the super vertices
-
-    // we will keep the indices of the bad triangles so that we can eliminate them
-    std::vector<int> triangles_to_eliminate;
-    int index = 0;
-    for (Triangle &t : triangulation)
-    {
-        if (a == t.Get_Point(1) || a == t.Get_Point(2) || a == t.Get_Point(3))
-            triangles_to_eliminate.push_back(index);
-        else if (b == t.Get_Point(1) || b == t.Get_Point(2) || b == t.Get_Point(3))
-            triangles_to_eliminate.push_back(index);
-        else if (c == t.Get_Point(1) || c == t.Get_Point(2) || c == t.Get_Point(3))
-            triangles_to_eliminate.push_back(index);
-
-        index++;
-    }
-    // eliminating the triangles with super vertices
-    while (triangles_to_eliminate.size())
-    {
-        triangulation.erase(triangulation.begin() + triangles_to_eliminate.back());
-        triangles_to_eliminate.pop_back();
     }
 
     return triangulation;

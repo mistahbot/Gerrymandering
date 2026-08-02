@@ -1,9 +1,6 @@
 #pragma once
-#include <utility>
 #include <vector>
-
-int Orientation(std::pair <long long, long long> a, std::pair <long long, long long> b, std::pair <long long, long long> c);
-bool ConvexHull(std::vector <std::pair <long long, long long>> points, std::vector <std::pair <long long, long long>> & convex_hull_points, std::vector <std::pair <long long, long long>> & interior_points, bool non_line_non_point, int needed_interior_points);
+#include <utility>
 
 class Point
 {
@@ -14,6 +11,9 @@ public:
     bool operator<(const Point & other) const;
     bool operator==(const Point & other) const;
 };
+
+int Orientation(Point a, Point b, Point c);
+bool ConvexHull(std::vector <Point> points, std::vector <Point> & convex_hull_points, std::vector <Point> & interior_points, bool non_line_non_point, int needed_interior_points);
 
 class Edge
 {
@@ -37,4 +37,4 @@ public:
 __int128_t Matrix_Determinant(std::vector<std::vector<long long>> a);
 bool is_in_Circumcircle(const Triangle & t, const Point & p);
 
-std::vector<Triangle> BowyerWatson(const std::vector<Point> & p);
+std::vector<Triangle> DelauneyTriangulation(std::vector<Point> p);
