@@ -12,7 +12,17 @@ public:
     bool operator==(const Point & other) const;
 };
 
+class Double_Point
+{
+public:
+    double x, y;
+    Double_Point(const std::pair <double, double> & p) : x(p.first), y(p.second) {};
+    Double_Point(double x_, double y_) : x(x_), y(y_) {};
+    Double_Point(const Point & p) : x(p.x), y(p.y) {};
+};
+
 int Orientation(Point a, Point b, Point c);
+double Double_Orientation(Double_Point, Double_Point b, Double_Point c);
 bool ConvexHull(std::vector <Point> points, std::vector <Point> & convex_hull_points, std::vector <Point> & interior_points, bool non_line_non_point, int needed_interior_points);
 
 class Edge
@@ -37,4 +47,8 @@ public:
 __int128_t Matrix_Determinant(std::vector<std::vector<long long>> a);
 bool is_in_Circumcircle(const Triangle & t, const Point & p);
 
-std::vector<Triangle> DelauneyTriangulation(std::vector<Point> p);
+std::vector<Triangle> DelaunayTriangulation(std::vector<Point> p);
+
+Double_Point Circumcenter(const Triangle & t);
+
+void CutPolygon(std::vector<Double_Point> & polygon, Double_Point a, Double_Point b, Double_Point p);

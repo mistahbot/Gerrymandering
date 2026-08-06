@@ -18,6 +18,14 @@ int Orientation(Point a, Point b, Point c)
         return 0;
 }
 
+// =0 means that the points are collinear
+// <0 means that the orientation is clockwise/right
+// >0 means that the orientations is counter-clockwise/left
+double Double_Orientation(Double_Point a, Double_Point b, Double_Point c)
+{
+    return (b.x - a.x) * (c.y - b.y) - (c.x - b.x) * (b.y - a.y);
+}
+
 // This ConvexHull includes collinear points in the polygon structure
 bool ConvexHull(std::vector<Point> points, std::vector<Point> &convex_hull_points, std::vector<Point> &interior_points, bool non_line_non_point, int needed_interior_points)
 {
@@ -184,7 +192,7 @@ bool is_in_Circumcircle(const Triangle &t, const Point &p)
     return false;
 }
 
-std::vector<Triangle> DelauneyTriangulation(std::vector<Point> p)
+std::vector<Triangle> DelaunayTriangulation(std::vector<Point> p)
 {
     if (p.size() < 3)
         throw std::runtime_error("need at least three points to calculate BowyerWatson");
@@ -195,7 +203,7 @@ std::vector<Triangle> DelauneyTriangulation(std::vector<Point> p)
 
     // Calculating the convex hull
     if (ConvexHull(p, convex_hull, interior_points, 1, 0) == 0)
-        throw std::runtime_error("cant build a convex hull out of the points for the delauney triangulation");
+        throw std::runtime_error("cant build a convex hull out of the points for the delaunay triangulation");
 
     // Creating a initial triangulation (it will be probably wrong)
     for (int i = 2; i < int(convex_hull.size()); i++)
@@ -215,7 +223,7 @@ std::vector<Triangle> DelauneyTriangulation(std::vector<Point> p)
             edges[{t.Get_Point(3), t.Get_Point(1)}]++;
         }
 
-        // Searching at possible delauney errors
+        // Searching at possible delaunay errors
         // We use Lawson's flipping
         // we check each quadrilateral if it's valid
         for (auto e : edges)
@@ -306,4 +314,66 @@ std::vector<Triangle> DelauneyTriangulation(std::vector<Point> p)
     }
 
     return triangulation;
+}
+
+Double_Point Circumcenter(const Triangle & t)
+{
+    // i'm using the formulas i deduced in Circumcircle.md
+
+    Point n(t.Get_Point(1)), m(t.Get_Point(2)), p(t.Get_Point(3));
+
+    double coef_1 = n.x - m.x;
+    double coef_2 = n.y - m.y;
+    double coef_3 = n.x - p.x;
+    double coef_4 = n.y - p.y;
+    double const_1 = (n.x + m.x) / 2.0 * (n.x - m.x) + (n.y + m.y) / 2.0 * (n.y - m.y);
+    double const_2 = (n.x + p.x) / 2.0 * (n.x - p.x) + (n.y + p.y) / 2.0 * (n.y - p.y);
+
+    Double_Point c{0, 0};
+    double det = coef_1 * coef_4 - coef_2 * coef_3;
+    if (det == 0)
+        throw std::runtime_error("got determinant is 0 while calculating a circumcenter");
+    c.x = (const_1 * coef_4 - const_2 * coef_2) / det;
+    c.y = (coef_1 * const_2 - const_1 * coef_3) / det;
+    return c;
+}
+
+// we are cutting the polygon with the line formed by ab, and choosing the convex in the same halfplane (obtained by cutting the plane with the line ab) as p
+void CutPolygon(std::vector<Double_Point> & polygon, Double_Point a, Double_Point b, Double_Point p)
+{
+    double op = Double_Orientation(a, b, p);
+    std::vector<Double_Point> new_polygon;
+    for (int i = 1; i <= int(polygon.size()); i ++)
+    {
+        // good_half_plane tells us for each of the two points if they are in the same half plane as p
+        bool good_half_plane[2] = {0, 0};
+        double o0, o1;
+        o0 = Double_Orientation(a, b, polygon[i - 1]);
+        o1 = Double_Orientation(a, b, polygon[(i == int(polygon.size()) ? 0 : i)]);
+
+        if (op == 0)
+            throw std::runtime_error("whilst cutting the polygon, there is ambiguity on which half plane needs to be choosen");
+
+        if (o0 == 0 || (o0 > 0 && op > 0) || (o0 < 0 && op < 0))
+            good_half_plane[0] = 1;
+        if (o1 == 0 || (o1 > 0 && op > 0) || (o1 < 0 && op < 0))
+            good_half_plane[1] = 1;
+
+        // now we can update the new polygon
+        // we need to add the latter point if its in the right half plane
+        // we dont need to do it for the former point because for another edge, that point will be the latter
+        // we also need to see if the line cuts the edge
+
+        if (good_half_plane[0] != good_half_plane[1])
+        {
+            // we need to find the intersection between the lines (polygon[i], polygon[i - 1]) and (a, b)
+            double t = o0 / (o0 - o1);
+            new_polygon.push_back(Double_Point(polygon[i - 1].x + t * (polygon[(i == int(polygon.size()) ? 0 : i)].x - polygon[i - 1].x), polygon[i - 1].y + t * (polygon[(i == int(polygon.size()) ? 0 : i)].y - polygon[i - 1].y)));
+        }
+
+        if (good_half_plane[1])
+            new_polygon.push_back(polygon[(i == int(polygon.size()) ? 0 : i)]);
+    }
+
+    polygon = new_polygon;
 }
