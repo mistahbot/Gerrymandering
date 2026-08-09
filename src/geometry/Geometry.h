@@ -52,3 +52,10 @@ std::vector<Triangle> DelaunayTriangulation(std::vector<Point> p);
 Double_Point Circumcenter(const Triangle & t);
 
 void CutPolygon(std::vector<Double_Point> & polygon, Double_Point a, Double_Point b, Double_Point p);
+
+double Dist_Two_Double_Points(Double_Point a, Double_Point b);
+double Area_Three_Point(Double_Point a, Double_Point b, Double_Point c);
+double Convex_Polygon_Area(std::vector<Double_Point> polygon);
+
+double NormalDistribution_CDF(double x);
+double Inverse_NormalDistribution_CDF(double p);

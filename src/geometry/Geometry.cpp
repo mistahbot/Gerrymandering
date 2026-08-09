@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <map>
+#include <cmath>
 
 // 0 means that the points are collinear
 // -1 means that the orientation is clockwise/right
@@ -252,7 +253,7 @@ std::vector<Triangle> DelaunayTriangulation(std::vector<Point> p)
                         third_points.push_back(t.Get_Point(2));
                         triangles_to_eliminate_maybe.push_back(index);
                     }
-                    index ++;
+                    index++;
                 }
                 if (third_points.size() != 2)
                     throw std::runtime_error("something went wrong in the lawsons's flipping");
@@ -316,7 +317,7 @@ std::vector<Triangle> DelaunayTriangulation(std::vector<Point> p)
     return triangulation;
 }
 
-Double_Point Circumcenter(const Triangle & t)
+Double_Point Circumcenter(const Triangle &t)
 {
     // i'm using the formulas i deduced in Circumcircle.md
 
@@ -339,11 +340,11 @@ Double_Point Circumcenter(const Triangle & t)
 }
 
 // we are cutting the polygon with the line formed by ab, and choosing the convex in the same halfplane (obtained by cutting the plane with the line ab) as p
-void CutPolygon(std::vector<Double_Point> & polygon, Double_Point a, Double_Point b, Double_Point p)
+void CutPolygon(std::vector<Double_Point> &polygon, Double_Point a, Double_Point b, Double_Point p)
 {
     double op = Double_Orientation(a, b, p);
     std::vector<Double_Point> new_polygon;
-    for (int i = 1; i <= int(polygon.size()); i ++)
+    for (int i = 1; i <= int(polygon.size()); i++)
     {
         // good_half_plane tells us for each of the two points if they are in the same half plane as p
         bool good_half_plane[2] = {0, 0};
@@ -376,4 +377,76 @@ void CutPolygon(std::vector<Double_Point> & polygon, Double_Point a, Double_Poin
     }
 
     polygon = new_polygon;
+}
+
+double Dist_Two_Double_Points(Double_Point a, Double_Point b)
+{
+    return std::sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
+}
+
+double Area_Three_Point(Double_Point a, Double_Point b, Double_Point c)
+{
+    // heron's formula
+    double l_a = Dist_Two_Double_Points(a, b);
+    double l_b = Dist_Two_Double_Points(b, c);
+    double l_c = Dist_Two_Double_Points(c, a);
+    double s = (l_a + l_b + l_c) / 2;
+
+    // the fabs is just for cases where there is a degenerate triangle or a triangle close
+    // to being degenerate and the calculations, due to rounding errors, give an extremely small negative number
+    return std::sqrt(std::fabs(s * (s - l_a) * (s - l_b) * (s - l_c)));
+}
+
+double Convex_Polygon_Area(std::vector<Double_Point> polygon)
+{
+    double area = 0;
+    // splitting the polygon in triangles
+    for (int i = 1; i < int(polygon.size()) - 1; i++)
+        area += Area_Three_Point(polygon[0], polygon[i], polygon[i + 1]);
+    return area;
+}
+
+// mean is considered to be 0, and sigma 1
+double NormalDistribution_CDF(double x)
+{
+    return 0.5 * (1 + std::erf(x / std::sqrt(2)));
+}
+
+// mean is considered to be 0, and sigma 1
+double Inverse_NormalDistribution_CDF(double p)
+{
+    // This uses the Acklam's algorithm
+
+    if (p <= 0.0 || p >= 1.0)
+        throw std::runtime_error("probability must be between 0 and 1, not inclusive, to calculate the inverse of CDF for the normal distribution");
+
+    // Magic numbers
+    const double a[6] = {-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00};
+    const double b[5] = {-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01};
+    const double c[6] = {-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00};
+    const double d[4] = {7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00};
+
+    const double p_low = 0.02425;
+    const double p_high = 1 - p_low;
+
+    double q, r, x;
+
+    if (p < p_low)
+    {
+        q = std::sqrt(-2.0 * std::log(p));
+        x = (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0);
+    }
+    else if (p <= p_high)
+    {
+        q = p - 0.5;
+        r = q * q;
+        x = (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1.0);
+    }
+    else
+    {
+        q = std::sqrt(-2.0 * std::log(1.0 - p));
+        x = -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0);
+    }
+
+    return x;
 }
