@@ -238,7 +238,7 @@ Map::Map(int nr_points, long long total_population, std::vector<double> vote_sha
     {
         std::vector<double> new_noise(voting_station.size());
         // the heuristic is the noise for a voting station becomes half of the current noise and half of the mean of the neighbours noise
-        for (int i = 0; i < voting_station.size(); i++)
+        for (int i = 0; i < int(voting_station.size()); i++)
         {
             new_noise[i] = 0;
             const auto &n = voting_station[i].get_neighbours();
@@ -253,7 +253,7 @@ Map::Map(int nr_points, long long total_population, std::vector<double> vote_sha
 
     // we need to determine what is the order
     std::vector<int> order_of_noise;
-    for (int i = 0; i < voting_station.size(); i++)
+    for (int i = 0; i < int(voting_station.size()); i++)
         order_of_noise.push_back(i);
     std::sort(order_of_noise.begin(), order_of_noise.end(), [&noise](int a, int b)
               { return noise[a] < noise[b]; });
@@ -266,7 +266,7 @@ Map::Map(int nr_points, long long total_population, std::vector<double> vote_sha
     // if the total sum is not zero, and each element is not negative
     // by just making each element be the percentage it is of the total sum
     double sum_of_vote_share_elements = 0;
-    for (int i = 0; i < vote_share.size(); i++)
+    for (int i = 0; i < int(vote_share.size()); i++)
     {
         if (vote_share[i] < 0)
             throw std::runtime_error("can't have negative vote_share");
@@ -274,7 +274,7 @@ Map::Map(int nr_points, long long total_population, std::vector<double> vote_sha
     }
     if (sum_of_vote_share_elements == 0)
         throw std::runtime_error("can't have all parties with zero share of the vote");
-    for (int i = 0; i < vote_share.size(); i++)
+    for (int i = 0; i < int(vote_share.size()); i++)
         vote_share[i] = vote_share[i] / sum_of_vote_share_elements;
 
     // the whole idea is to just put the parties on a normal distribution

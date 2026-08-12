@@ -23,8 +23,6 @@ private:
     long long population;
     // how they vote
     std::vector<double> vote_share;
-    // are they on the hull
-    bool on_the_hull;
 public:
     Voting_Station(Point p_);
     void add_neighbour(int index);
