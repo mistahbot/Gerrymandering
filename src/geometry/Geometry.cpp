@@ -343,6 +343,8 @@ Double_Point Circumcenter(const Triangle &t)
 void CutPolygon(std::vector<Double_Point> &polygon, Double_Point a, Double_Point b, Double_Point p)
 {
     double op = Double_Orientation(a, b, p);
+    if (op == 0)
+        throw std::runtime_error("whilst cutting the polygon, there is ambiguity on which half plane needs to be choosen");
     std::vector<Double_Point> new_polygon;
     for (int i = 1; i <= int(polygon.size()); i++)
     {
@@ -351,9 +353,6 @@ void CutPolygon(std::vector<Double_Point> &polygon, Double_Point a, Double_Point
         double o0, o1;
         o0 = Double_Orientation(a, b, polygon[i - 1]);
         o1 = Double_Orientation(a, b, polygon[(i == int(polygon.size()) ? 0 : i)]);
-
-        if (op == 0)
-            throw std::runtime_error("whilst cutting the polygon, there is ambiguity on which half plane needs to be choosen");
 
         if (o0 == 0 || (o0 > 0 && op > 0) || (o0 < 0 && op < 0))
             good_half_plane[0] = 1;
